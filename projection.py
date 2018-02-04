@@ -43,8 +43,8 @@ def rot_x(theta):
 	# Returns a matrix to rotate a point by angle theta around x axis.
 
 	rotation = [[ 1,           0,           0 ],
-			    [ 0,  cos(theta), -sin(theta) ],
-			    [ 0,  sin(theta),  cos(theta) ]]
+				[ 0,  cos(theta), -sin(theta) ],
+				[ 0,  sin(theta),  cos(theta) ]]
 
 	return matrix(rotation)
 
@@ -65,8 +65,8 @@ def scale(factor):
 	# Returns a matrix to scale a point by the given scale factor from the origin.
 
 	scaling  = [[ factor,      0,      0 ],
-			    [      0, factor,      0 ],
-			    [      0,      0, factor ]]
+				[      0, factor,      0 ],
+				[      0,      0, factor ]]
 
 	return matrix(scaling)
 
@@ -95,13 +95,13 @@ class Engine(object):
 		# self.cube is a list of points at the corner of a cube
 
 		self.cube    = [( 100.0, 100.0, 100.0),
-					    ( 100.0, 100.0,-100.0),
-					    ( 100.0,-100.0, 100.0),
-					    ( 100.0,-100.0,-100.0),
-					    (-100.0, 100.0, 100.0),
-					    (-100.0, 100.0,-100.0),
-					    (-100.0,-100.0, 100.0),
-					    (-100.0,-100.0,-100.0)]
+						( 100.0, 100.0,-100.0),
+						( 100.0,-100.0, 100.0),
+						( 100.0,-100.0,-100.0),
+						(-100.0, 100.0, 100.0),
+						(-100.0, 100.0,-100.0),
+						(-100.0,-100.0, 100.0),
+						(-100.0,-100.0,-100.0)]
 
 		self.rotating = True # Variable to control rotation animation at startup.
 
