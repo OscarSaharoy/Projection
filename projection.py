@@ -17,7 +17,7 @@ array  = numpy.array
 x_res  = 500 # Width of screen
 y_res  = 500 # Height of screen
 
-delay  = 5 # time between frames
+delay  = 16 # time between frames
 fov    = pi/6
 f_len  = x_res/tan(fov/2)
 
@@ -76,6 +76,11 @@ class Engine(object):
 		icon = pygame.image.load(r'assets/cube.png')
 		pygame.display.set_icon(icon)
 
+		# Stores number of ticks and frames since startup
+
+		self.tick   = 0
+		self.frames = 0
+
 
 		# self.pos is position of camera, self.view is the angle of viewing.
 
@@ -106,6 +111,11 @@ class Engine(object):
 
 		while True:
 
+			# Set number of ticks and frames
+
+			self.tick    = pygame.time.get_ticks()
+			self.frames += 1
+
 			# test for exit request
 			for event in pygame.event.get():
 				if event.type == pygame.QUIT:
@@ -115,11 +125,6 @@ class Engine(object):
 
 			# game funtions
 
-			'''
-			self.pp = []
-			for point in self.cube:
-				self.draw(point)'''
-
 			self.project()
 			self.move()
 			self.look()
@@ -127,9 +132,20 @@ class Engine(object):
 			if self.rotating:
 				self.rotate()
 
-			# update screen and add delay
+			# update screen
+
 			pygame.display.flip()
-			pygame.time.delay(delay)
+
+			# timing control:
+
+			elapsed = pygame.time.get_ticks() - self.tick
+
+			# If rendering last frame took lees time than delay, wait the remaining time
+			# before next frame
+
+			if elapsed < delay:
+
+				pygame.time.delay(delay - elapsed)
 
 
 	def rotate(self):
