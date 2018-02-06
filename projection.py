@@ -1,6 +1,6 @@
 # Oscar Saharoy 2018
 
-import sys,pygame,numpy
+import sys, pygame, numpy
 
 # Config
 
@@ -11,12 +11,13 @@ sin    = lambda x: numpy.sin(x)
 tan    = lambda x: numpy.tan(x)
 pi     = numpy.pi
 matrix = numpy.matrix
+array  = numpy.array
 
 
 x_res  = 500 # Width of screen
 y_res  = 500 # Height of screen
 
-delay  = 16 # time between frames
+delay  = 5 # time between frames
 fov    = pi/6
 f_len  = x_res/tan(fov/2)
 
@@ -43,8 +44,8 @@ def rot_x(theta):
 	# Returns a matrix to rotate a point by angle theta around x axis.
 
 	rotation = [[ 1,           0,           0 ],
-			    [ 0,  cos(theta), -sin(theta) ],
-			    [ 0,  sin(theta),  cos(theta) ]]
+				[ 0,  cos(theta), -sin(theta) ],
+				[ 0,  sin(theta),  cos(theta) ]]
 
 	return matrix(rotation)
 
@@ -58,17 +59,6 @@ def rot_y(theta):
 				[ -sin(theta),  0, cos(theta) ]]
 
 	return matrix(rotation)
-
-
-def scale(factor):
-
-	# Returns a matrix to scale a point by the given scale factor from the origin.
-
-	scaling  = [[ factor,      0,      0 ],
-			    [      0, factor,      0 ],
-			    [      0,      0, factor ]]
-
-	return matrix(scaling)
 
 
 class Engine(object):
@@ -89,19 +79,23 @@ class Engine(object):
 
 		# self.pos is position of camera, self.view is the angle of viewing.
 
-		self.pos     = matrix([[ -1500, 300, 0 ]])
-		self.view    = matrix([[ 0.0, -0.2 ]])
+		self.pos  = matrix([[ -1500, 300, 0 ]])
+		self.view = matrix([[ 0.0, -0.2 ]])
 
 		# self.cube is a list of points at the corner of a cube
 
-		self.cube    = [( 100.0, 100.0, 100.0),
-					    ( 100.0, 100.0,-100.0),
-					    ( 100.0,-100.0, 100.0),
-					    ( 100.0,-100.0,-100.0),
-					    (-100.0, 100.0, 100.0),
-					    (-100.0, 100.0,-100.0),
-					    (-100.0,-100.0, 100.0),
-					    (-100.0,-100.0,-100.0)]
+		self.cube = matrix([[ 100.0, 100.0, 100.0],
+							[ 100.0, 100.0,-100.0],
+							[ 100.0,-100.0, 100.0],
+							[ 100.0,-100.0,-100.0],
+							[-100.0, 100.0, 100.0],
+							[-100.0, 100.0,-100.0],
+							[-100.0,-100.0, 100.0],
+							[-100.0,-100.0,-100.0]])
+
+		#self.pairs = [(0,1),(0,2),(0,4),(1,3),(1,5),(2,3),(2,6),(3,7),(4,5),(4,6),(5,7),(6,7)]
+
+		self.pairs = [ (x,y) for x in range(8) for y in range(x,8) ]
 
 		self.rotating = True # Variable to control rotation animation at startup.
 
@@ -120,10 +114,13 @@ class Engine(object):
 			self.surface.fill(white) # clear screen
 
 			# game funtions
+
+			'''
 			self.pp = []
 			for point in self.cube:
-				self.draw(point)
+				self.draw(point)'''
 
+			self.project()
 			self.move()
 			self.look()
 
@@ -201,7 +198,7 @@ class Engine(object):
 
 		delta    = 0
 
-		ar = self.view[0,0] # rotation angle of camera around y axis, used to calculate direction of movement
+		ar       = self.view[0,0] # rotation angle of camera around y axis, used to calculate direction of movement
 
 		# Controls are WASD, Space and Shift
 
@@ -223,49 +220,45 @@ class Engine(object):
 		if pressed[pygame.K_a]:
 			delta += 10 * rot_y(-ar - pi/2)
 
-		self.pos = self.pos + delta # increment position by distance calculated
+		self.pos = (self.pos + delta)[0] # increment position by distance calculated
 
 
-	def draw(self,point):
+	def project(self):
 
-		# Project point
+		# Translate cube so that the camera is at the origin.
 
-		dx  = point[0] - self.pos[0,0] # difference between point and camera x coordinate
-		dy  = point[1] - self.pos[0,1] # y coordinate difference
-		dz  = point[2] - self.pos[0,2] # z coordinate difference
+		translated_cube  = self.cube - self.pos
 
-		t_point   = numpy.matrix([[dx,dy,dz]])
-		
-		# Rotates point by camera angle of viewing
+		# Rotate cube by the angle of the camera.
 
-		rot_point = t_point * rot_y(self.view[0,0]) * rot_z(self.view[0,1])
-		
-		# Do nothing if point is behind camera
+		rotated_cube     = translated_cube * rot_y(self.view[0,0]) * rot_z(self.view[0,1])
 
-		if rot_point[0,0] <= 0:
-			pass
-		
+		# Calculate scale factor for each point to scale it onto the projection plane.
+		# * 3 is necessary so that each coordinate of each point (3 for each) is scaled.
 
-		else:
-		
-			# Calculate extent of scaling to bring point onto the viewing plane, and scale it by that factor
+		scale_factors    = array( [ [f_len / point[0,0]] * 3 for point in rotated_cube] )
 
-			factor = f_len / rot_point[0,0]
+		# Scale points by sacle factor.
 
-			new_point = rot_point * scale(factor)
-
-			# Add half of screen resolution to bring the point to the centre of the screen
-			# Y coordinate becomes negative to account for down on screen being positive y
-
-			fx,fy = [int(new_point[0,2]) + x_res//2, y_res//2 - int(new_point[0,1]) ]
+		projected_points = array(rotated_cube) * scale_factors
 
 
-			# Draws lines between all points on cube
+		# Draw lines between points of cube.
 
-			for point in self.pp:
-	
-				pygame.draw.aaline(self.surface,black,point,(fx,fy))
-			
-			self.pp += [(fx,fy)]
+		offset = array([0, -y_res/2, x_res/2])
+
+		for first, second in self.pairs:
+
+			if rotated_cube[first,0] < 5 or rotated_cube[second,0] < 5:
+
+				continue # dont draw line if either point is behind the camera
+
+			# Offset the points into centre of screen, otherwise they would be centered at 0,0 which is the
+			# top left corner.
+
+			x1,y1,z1 = projected_points[first]  + offset
+			x2,y2,z2 = projected_points[second] + offset
+
+			pygame.draw.aaline(self.surface, black, (z1,-y1), (z2,-y2) )
 
 Engine()
