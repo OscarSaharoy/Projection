@@ -14,18 +14,19 @@ matrix = numpy.matrix
 array  = numpy.array
 
 
-x_res  = 500 # Width of screen
-y_res  = 500 # Height of screen
+x_res  = 700 # Width of screen
+y_res  = 700 # Height of screen
 
 delay  = 16 # time between frames
-fov    = pi/6
+fov    = pi/3
 f_len  = x_res/tan(fov/2)
 
 
 # Palette
 
-white  = (255,255,255)
-black  = (0,0,0)
+white  = (255,255,255,255)
+black  = (0,0,0,255)
+leaf   = (30,255,30,255)
 
 
 def rot_z(theta):
@@ -61,13 +62,27 @@ def rot_y(theta):
     return matrix(rotation)
 
 
+def normalise(theta):
+
+    # Code to keep theta between pi and -pi
+
+    if  theta < -pi:
+        theta += pi*2
+
+    if  theta >  pi:
+        theta -= pi*2
+
+    return theta
+
+
 class Engine(object):
 
     def __init__(self):
 
         pygame.init()
 
-        self.surface = pygame.display.set_mode((x_res,y_res)) # initialise window for drawing
+        self.surface = pygame.display.set_mode((x_res,y_res), pygame.DOUBLEBUF) # initialise window for drawing
+        self.surface.convert_alpha()
 
         # Set favicon and title.
 
@@ -121,20 +136,15 @@ class Engine(object):
                 if event.type == pygame.QUIT:
                     sys.exit()
 
-            self.surface.fill(white) # clear screen
-
             # game funtions
-
-            self.project()
-            self.move()
-            self.look()
 
             if self.rotating:
                 self.rotate()
 
-            # update screen
+            self.move()
+            self.look()
+            self.project()
 
-            pygame.display.flip()
 
             # timing control:
 
@@ -162,11 +172,7 @@ class Engine(object):
 
         # Code to keep viewing angle between pi and -pi
 
-        if  self.view[0,0] < -pi:
-            self.view[0,0] =  pi
-
-        if  self.view[0,0] >  pi:
-            self.view[0,0] = -pi
+        self.view[0,0] = normalise(self.view[0,0])
 
 
     def look(self):
@@ -190,12 +196,7 @@ class Engine(object):
 
             # Code to keep rotation angle between pi and -pi
 
-            if  self.view[0,0] < -pi:
-                self.view[0,0] =  pi
-
-            if  self.view[0,0] >  pi:
-                self.view[0,0] = -pi
-
+            self.view[0,0] = normalise(self.view[0,0])
 
             # Code to keep elevation angle between pi/2 and -pi/2
 
@@ -241,6 +242,8 @@ class Engine(object):
 
     def project(self):
 
+        self.surface.fill(white) # clear screen
+
         # Translate cube so that the camera is at the origin.
 
         translated_cube  = self.cube - self.pos
@@ -276,5 +279,11 @@ class Engine(object):
             x2,y2,z2 = projected_points[second] + offset
 
             pygame.draw.aaline(self.surface, black, (z1,-y1), (z2,-y2) )
+
+
+        # update screen
+
+        pygame.display.flip()
+
 
 Engine()
