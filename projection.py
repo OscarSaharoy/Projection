@@ -1,6 +1,7 @@
 # Oscar Saharoy 2018
 
 import sys, pygame, numpy
+from pygame import gfxdraw
 
 # Config
 
@@ -14,11 +15,11 @@ matrix = numpy.matrix
 array  = numpy.array
 
 
-x_res  = 700 # Width of screen
-y_res  = 700 # Height of screen
+x_res  = 1000 # Width of screen
+y_res  = 1000 # Height of screen
 
 delay  = 16 # time between frames
-fov    = pi/3
+fov    = pi/6
 f_len  = x_res/tan(fov/2)
 
 
@@ -27,6 +28,10 @@ f_len  = x_res/tan(fov/2)
 white  = (255,255,255,255)
 black  = (0,0,0,255)
 leaf   = (30,255,30,255)
+leaf1  = (25,205,25,255)
+leaf2  = (20,170,20,255)
+leaf3  = (15,130,15,255)
+leaf4  = (12,100,12,255)
 
 
 def rot_z(theta):
@@ -75,11 +80,23 @@ def normalise(theta):
     return theta
 
 
+class Tri(object):
+
+    def __init__(self,corners,fill=white):
+
+        self.corners = corners
+        self.fill = fill
+
+        self.matrix = matrix(self.corners)
+
+
 class Engine(object):
 
     def __init__(self):
 
         pygame.init()
+
+        #pygame.display.gl_set_attribute(GL_DEPTH_SIZE, 16)
 
         self.surface = pygame.display.set_mode((x_res,y_res), pygame.DOUBLEBUF) # initialise window for drawing
         self.surface.convert_alpha()
@@ -104,18 +121,18 @@ class Engine(object):
 
         # self.cube is a list of points at the corner of a cube
 
-        self.cube = matrix([[ 100.0, 100.0, 100.0],
-                            [ 100.0, 100.0,-100.0],
-                            [ 100.0,-100.0, 100.0],
-                            [ 100.0,-100.0,-100.0],
-                            [-100.0, 100.0, 100.0],
-                            [-100.0, 100.0,-100.0],
-                            [-100.0,-100.0, 100.0],
-                            [-100.0,-100.0,-100.0]])
+        self.cube  = [Tri([ ( 100, 100, 100), ( 100, 100,-100), ( 100,-100,-100), ( 100,-100, 100) ], fill=leaf1), # front
+ 
+                      Tri([ (-100, 100, 100), (-100, 100,-100), (-100,-100,-100), (-100,-100, 100) ], fill=leaf3), # back
+  
+                      Tri([ ( 100, 100,-100), (-100, 100,-100), (-100,-100,-100), ( 100,-100,-100) ], fill=leaf2), # left
+ 
+                      Tri([ (-100, 100, 100), ( 100, 100, 100), ( 100,-100, 100), (-100,-100, 100) ], fill=leaf2), # right
 
-        #self.pairs = [(0,1),(0,2),(0,4),(1,3),(1,5),(2,3),(2,6),(3,7),(4,5),(4,6),(5,7),(6,7)]
+                      Tri([ (-100, 100, 100), ( 100, 100, 100), ( 100, 100,-100), (-100, 100,-100) ], fill=leaf ), # top
 
-        self.pairs = [ (x,y) for x in range(8) for y in range(x,8) ]
+                      Tri([ (-100,-100, 100), ( 100,-100, 100), ( 100,-100,-100), (-100,-100,-100) ], fill=leaf4)] # bottom
+
 
         self.rotating = True # Variable to control rotation animation at startup.
 
@@ -143,8 +160,7 @@ class Engine(object):
 
             self.move()
             self.look()
-            self.project()
-
+            self.draw()
 
             # timing control:
 
@@ -240,46 +256,62 @@ class Engine(object):
         self.pos = (self.pos + delta)[0] # increment position by distance calculated
 
 
-    def project(self):
+    def draw(self):
 
         self.surface.fill(white) # clear screen
 
-        # Translate cube so that the camera is at the origin.
+        projected_faces = []
 
-        translated_cube  = self.cube - self.pos
+        for face in self.cube:
 
-        # Rotate cube by the angle of the camera.
+            # translate face by camera coordinates
 
-        rotated_cube     = translated_cube * rot_y(self.view[0,0]) * rot_z(self.view[0,1])
+            translated_face  = face.matrix - self.pos
 
-        # Calculate scale factor for each point to scale it onto the projection plane.
-        # * 3 is necessary so that each coordinate of each point (3 for each) is scaled.
+            # rotate by angle of viewing
+    
+            rotated_face     = translated_face * rot_y(self.view[0,0]) * rot_z(self.view[0,1])
 
-        scale_factors    = array( [ [f_len / point[0,0]] * 3 for point in rotated_cube] )
+            # calculate and multiply by scale factor needed to bring point onto projection plane
+    
+            scale_factors    = array( [ [f_len / point[0,0]] * 3 for point in rotated_face] )
+    
+            projected_points = array(rotated_face) * scale_factors
 
-        # Scale points by sacle factor.
+            # offset points into centre of screen - would be centred at 0,0 on screen otherwise
 
-        projected_points = array(rotated_cube) * scale_factors
+            offset           = array([[0, -y_res/2, x_res/2] for point in rotated_face])
 
+            screen_points    = projected_points + offset
 
-        # Draw lines between points of cube.
+            # calculate x depth of face
 
-        offset = array([0, -y_res/2, x_res/2])
+            x_depth          = sum((array(rotated_face) * array(rotated_face)).sum(axis=1))
 
-        for first, second in self.pairs:
+            # add face coords to list of faces with the x depth and fill colour
 
-            if rotated_cube[first,0] < 5 or rotated_cube[second,0] < 5:
+            projected_faces += [ [screen_points, x_depth, face.fill] ]
 
-                continue # dont draw line if either point is behind the camera
+        # order faces by distance from camera
 
-            # Offset the points into centre of screen, otherwise they would be centered at 0,0 which is the
-            # top left corner.
+        projected_faces = sorted(projected_faces, key= lambda x: x[1], reverse=True)
 
-            x1,y1,z1 = projected_points[first]  + offset
-            x2,y2,z2 = projected_points[second] + offset
+        # draw faces
 
-            pygame.draw.aaline(self.surface, black, (z1,-y1), (z2,-y2) )
+        for screen_points, x_depth, fill in projected_faces:
 
+            # each point is added to the 'points' list before it is drawn
+
+            points = []
+
+            for x,y,z in screen_points:
+
+                points += [(z,-y)]
+
+            # draws the aapolygon then filled_polygon for smooth eadges and filled faces
+
+            pygame.gfxdraw.aapolygon(self.surface, points, fill )
+            pygame.gfxdraw.filled_polygon(self.surface, points, fill )
 
         # update screen
 
