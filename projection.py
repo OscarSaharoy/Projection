@@ -15,11 +15,11 @@ matrix = numpy.matrix
 array  = numpy.array
 
 
-x_res  = 1000 # Width of screen
-y_res  = 1000 # Height of screen
+x_res  = 500 # Width of screen
+y_res  = 500 # Height of screen
 
 delay  = 16 # time between frames
-fov    = pi/6
+fov    = pi/2
 f_len  = x_res/tan(fov/2)
 
 
@@ -186,7 +186,7 @@ class Engine(object):
 
         # The x and y coordinates are 1500 times the coordinates of the unit circle where theta = ar.
 
-        self.pos = matrix([[ -1500 * cos(-ar), 300, -1500 * sin(-ar) ]])
+        self.pos = matrix([[ -800 * cos(-ar), 150, -800 * sin(-ar) ]])
 
         # Code to keep viewing angle between pi and -pi
 
