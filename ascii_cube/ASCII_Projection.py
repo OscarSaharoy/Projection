@@ -1,3 +1,5 @@
+# Oscar Saharoy 2018
+
 import numpy, time
 from math import *
 
