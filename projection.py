@@ -1,6 +1,6 @@
 # Oscar Saharoy 2018
 
-import sys, pygame, numpy
+import sys, pygame, numpy, os
 from pygame import gfxdraw
 
 # Config
@@ -107,7 +107,12 @@ class Engine(object):
 
         pygame.display.set_caption(' Projection')
 
-        icon = pygame.image.load(r'assets/cube.png')
+        # Set current directory
+        dirname   = os.path.dirname(__file__)
+        icon_path = os.path.join(dirname, r'assets/cube.png')
+
+        # setting favicon
+        icon = pygame.image.load(icon_path)
         pygame.display.set_icon(icon)
 
         # Stores number of ticks and frames since startup
